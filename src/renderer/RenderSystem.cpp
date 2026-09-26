@@ -1,8 +1,49 @@
 #include "RenderSystem.hpp"
 #include "raymath.h"
 #include "rlgl.h"
+#include "LightingShader.hpp"
 
 namespace REngine {
+
+void RenderSystem::Init() {
+    if (m_shaderLoaded) return;
+
+    m_lightingShader = LoadShaderFromMemory(GetLightingVertexShaderCode(), GetLightingFragmentShaderCode());
+    if (m_lightingShader.id != 0) {
+        m_shaderLoaded = true;
+
+        m_lightDirLoc = GetShaderLocation(m_lightingShader, "lightDir");
+        m_lightColorLoc = GetShaderLocation(m_lightingShader, "lightColor");
+        m_ambientColorLoc = GetShaderLocation(m_lightingShader, "ambientColor");
+        m_viewPosLoc = GetShaderLocation(m_lightingShader, "viewPos");
+
+        // Natural sunlight coming from top-right-front
+        Vector3 defaultLightDir = Vector3Normalize((Vector3){ -0.6f, -1.0f, -0.5f });
+        float lightDir[3] = { defaultLightDir.x, defaultLightDir.y, defaultLightDir.z };
+        SetShaderValue(m_lightingShader, m_lightDirLoc, lightDir, SHADER_UNIFORM_VEC3);
+
+        float lightColor[4] = { 0.85f, 0.85f, 0.82f, 1.0f };
+        SetShaderValue(m_lightingShader, m_lightColorLoc, lightColor, SHADER_UNIFORM_VEC4);
+
+        float ambientColor[4] = { 0.38f, 0.38f, 0.42f, 1.0f };
+        SetShaderValue(m_lightingShader, m_ambientColorLoc, ambientColor, SHADER_UNIFORM_VEC4);
+    }
+}
+
+void RenderSystem::Shutdown() {
+    if (m_shaderLoaded) {
+        UnloadShader(m_lightingShader);
+        m_shaderLoaded = false;
+    }
+}
+
+void RenderSystem::SetLightDirection(Vector3 dir) {
+    if (m_shaderLoaded && m_lightDirLoc != -1) {
+        Vector3 norm = Vector3Normalize(dir);
+        float lightDir[3] = { norm.x, norm.y, norm.z };
+        SetShaderValue(m_lightingShader, m_lightDirLoc, lightDir, SHADER_UNIFORM_VEC3);
+    }
+}
 
 void RenderSystem::DrawCameraGizmo(const Camera3D& cam, bool isSelected) {
     Vector3 camPos = cam.position;
@@ -55,6 +96,15 @@ void RenderSystem::DrawCameraGizmo(const Camera3D& cam, bool isSelected) {
 }
 
 void RenderSystem::Render(Scene& scene, const Camera3D& camera, bool isEditMode, entt::entity selectedEntity) {
+    if (!m_shaderLoaded) {
+        Init();
+    }
+
+    if (m_shaderLoaded && m_lightingEnabled) {
+        float camPos[3] = { camera.position.x, camera.position.y, camera.position.z };
+        SetShaderValue(m_lightingShader, m_viewPosLoc, camPos, SHADER_UNIFORM_VEC3);
+    }
+
     BeginMode3D(camera);
 
     // Draw reference floor grid
@@ -81,62 +131,77 @@ void RenderSystem::Render(Scene& scene, const Camera3D& camera, bool isEditMode,
 
         Vector3 originPos = { 0.0f, 0.0f, 0.0f };
 
+        // 1. Draw solid geometry with lighting shader
+        if (m_shaderLoaded && m_lightingEnabled) {
+            BeginShaderMode(m_lightingShader);
+        }
+
         switch (mesh.geometryType) {
-            case MeshGeometryType::Cube: {
+            case MeshGeometryType::Cube:
                 DrawCube(originPos, transform.scale.x, transform.scale.y, transform.scale.z, meshColor);
-                if (drawWires) {
-                    DrawCubeWires(originPos, transform.scale.x, transform.scale.y, transform.scale.z, wireColor);
-                }
                 break;
-            }
-            case MeshGeometryType::Sphere: {
-                float radius = transform.scale.x * 0.5f;
-                DrawSphere(originPos, radius, meshColor);
-                if (drawWires) {
-                    DrawSphereWires(originPos, radius, 16, 16, wireColor);
-                }
+            case MeshGeometryType::Sphere:
+                DrawSphere(originPos, transform.scale.x * 0.5f, meshColor);
                 break;
-            }
-            case MeshGeometryType::Cylinder: {
-                float radius = transform.scale.x * 0.5f;
-                DrawCylinder(originPos, radius, radius, transform.scale.y, 16, meshColor);
-                if (drawWires) {
-                    DrawCylinderWires(originPos, radius, radius, transform.scale.y, 16, wireColor);
-                }
+            case MeshGeometryType::Cylinder:
+                DrawCylinder(originPos, transform.scale.x * 0.5f, transform.scale.x * 0.5f, transform.scale.y, 16, meshColor);
                 break;
-            }
-            case MeshGeometryType::Plane: {
+            case MeshGeometryType::Plane:
                 DrawPlane(originPos, (Vector2){ transform.scale.x, transform.scale.z }, meshColor);
-                if (drawWires) {
-                    DrawCubeWires(originPos, transform.scale.x, 0.02f, transform.scale.z, wireColor);
-                }
                 break;
-            }
             case MeshGeometryType::Capsule: {
                 float radius = transform.scale.x * 0.5f;
                 float totalHeight = transform.scale.y;
                 float cylHeight = totalHeight - 2.0f * radius;
                 if (cylHeight < 0.0f) cylHeight = 0.0f;
-
                 float halfCyl = cylHeight * 0.5f;
                 Vector3 topCenter = { originPos.x, originPos.y + halfCyl, originPos.z };
                 Vector3 bottomCenter = { originPos.x, originPos.y - halfCyl, originPos.z };
 
                 if (cylHeight > 0.001f) {
                     DrawCylinder(originPos, radius, radius, cylHeight, 16, meshColor);
-                    if (drawWires) {
-                        DrawCylinderWires(originPos, radius, radius, cylHeight, 16, wireColor);
-                    }
                 }
-
                 DrawSphere(topCenter, radius, meshColor);
                 DrawSphere(bottomCenter, radius, meshColor);
+                break;
+            }
+        }
 
-                if (drawWires) {
+        if (m_shaderLoaded && m_lightingEnabled) {
+            EndShaderMode();
+        }
+
+        // 2. Draw wireframe outlines without shader (crisp unlit lines)
+        if (drawWires) {
+            switch (mesh.geometryType) {
+                case MeshGeometryType::Cube:
+                    DrawCubeWires(originPos, transform.scale.x, transform.scale.y, transform.scale.z, wireColor);
+                    break;
+                case MeshGeometryType::Sphere:
+                    DrawSphereWires(originPos, transform.scale.x * 0.5f, 16, 16, wireColor);
+                    break;
+                case MeshGeometryType::Cylinder:
+                    DrawCylinderWires(originPos, transform.scale.x * 0.5f, transform.scale.x * 0.5f, transform.scale.y, 16, wireColor);
+                    break;
+                case MeshGeometryType::Plane:
+                    DrawCubeWires(originPos, transform.scale.x, 0.02f, transform.scale.z, wireColor);
+                    break;
+                case MeshGeometryType::Capsule: {
+                    float radius = transform.scale.x * 0.5f;
+                    float totalHeight = transform.scale.y;
+                    float cylHeight = totalHeight - 2.0f * radius;
+                    if (cylHeight < 0.0f) cylHeight = 0.0f;
+                    float halfCyl = cylHeight * 0.5f;
+                    Vector3 topCenter = { originPos.x, originPos.y + halfCyl, originPos.z };
+                    Vector3 bottomCenter = { originPos.x, originPos.y - halfCyl, originPos.z };
+
+                    if (cylHeight > 0.001f) {
+                        DrawCylinderWires(originPos, radius, radius, cylHeight, 16, wireColor);
+                    }
                     DrawSphereWires(topCenter, radius, 12, 12, wireColor);
                     DrawSphereWires(bottomCenter, radius, 12, 12, wireColor);
+                    break;
                 }
-                break;
             }
         }
 

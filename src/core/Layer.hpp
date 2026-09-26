@@ -1,8 +1,12 @@
 #pragma once
 
 #include <string>
+#include "raylib.h"
 
 namespace REngine {
+
+class Application;
+class Scene;
 
 class Layer {
 public:
@@ -16,6 +20,12 @@ public:
     virtual void OnRenderUI() {}
 
     const std::string& GetName() const { return m_debugName; }
+
+    // Direct engine context accessors for AI developers (no manual constructor wiring required)
+    Application& GetApp();
+    Scene& GetScene();
+    Camera3D GetPrimaryCamera();
+    void SetPrimaryCamera(const Camera3D& camera);
 
 protected:
     std::string m_debugName;

@@ -33,6 +33,7 @@ Makefile
 *.sln
 *.vcxproj*
 *.user
+imgui.ini
 
 # Python temporary files
 __pycache__/

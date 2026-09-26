@@ -484,7 +484,21 @@ void rlImGuiBeginInitImGui(void)
 #endif
 
         defaultConfig.PixelSnapH = true;
-        io.Fonts->AddFontDefault(&defaultConfig);
+
+        const char* cyrillicFont = nullptr;
+        if (FileExists("C:\\Windows\\Fonts\\segoeui.ttf")) cyrillicFont = "C:\\Windows\\Fonts\\segoeui.ttf";
+        else if (FileExists("C:\\Windows\\Fonts\\arial.ttf")) cyrillicFont = "C:\\Windows\\Fonts\\arial.ttf";
+        else if (FileExists("C:\\Windows\\Fonts\\tahoma.ttf")) cyrillicFont = "C:\\Windows\\Fonts\\tahoma.ttf";
+
+        if (cyrillicFont != nullptr)
+        {
+            float fontSize = defaultConfig.SizePixels > 16.0f ? defaultConfig.SizePixels : 16.0f;
+            io.Fonts->AddFontFromFileTTF(cyrillicFont, fontSize, &defaultConfig, io.Fonts->GetGlyphRangesCyrillic());
+        }
+        else
+        {
+            io.Fonts->AddFontDefault(&defaultConfig);
+        }
     }
 }
 

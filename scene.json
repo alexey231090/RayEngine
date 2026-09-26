@@ -1,99 +1,28 @@
 {
   "entities": [
     {
-      "camera": {
-        "fovy": 45.0,
-        "isPrimary": true,
-        "orbital": true,
-        "position": [
-          0.0,
-          5.0,
-          3.1806581020355225
-        ],
-        "target": [
-          0.0,
-          1.0,
-          -6.819341659545898
-        ]
-      },
-      "name": "Game Camera",
-      "transform": {
-        "position": [
-          0.0,
-          5.0,
-          3.1806581020355225
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      }
-    },
-    {
       "mesh": {
         "color": [
-          255,
-          140,
-          0,
+          230,
+          41,
+          55,
           255
         ],
         "drawWires": true,
-        "type": "Capsule",
+        "type": "Cube",
         "wireColor": [
-          180,
-          70,
-          0,
+          190,
+          33,
+          55,
           255
         ]
       },
-      "name": "Orange Capsule",
+      "name": "Main Red Cube",
       "transform": {
         "position": [
-          -2.0,
-          1.25,
-          -0.4736013412475586
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
+          1.620867133140564,
           1.0,
-          2.5,
-          1.0
-        ]
-      }
-    },
-    {
-      "mesh": {
-        "color": [
-          84,
-          97,
-          188,
-          255
-        ],
-        "drawWires": true,
-        "type": "Cylinder",
-        "wireColor": [
-          0,
-          117,
-          44,
-          255
-        ]
-      },
-      "name": "Green Pillar",
-      "transform": {
-        "position": [
-          -3.3080286979675293,
-          3.8861730098724365,
-          2.6355395317077637
+          -4.190756797790527
         ],
         "rotation": [
           0.0,
@@ -101,9 +30,9 @@
           0.0
         ],
         "scale": [
-          1.5,
-          3.0,
-          1.5
+          2.0,
+          2.0,
+          2.0
         ]
       }
     },
@@ -146,26 +75,26 @@
     {
       "mesh": {
         "color": [
-          230,
-          41,
-          55,
+          84,
+          97,
+          188,
           255
         ],
         "drawWires": true,
-        "type": "Cube",
+        "type": "Cylinder",
         "wireColor": [
-          190,
-          33,
-          55,
+          0,
+          117,
+          44,
           255
         ]
       },
-      "name": "Main Red Cube",
+      "name": "Green Pillar",
       "transform": {
         "position": [
-          1.620867133140564,
-          1.0,
-          -4.190756797790527
+          -3.3080286979675293,
+          3.8861730098724365,
+          2.6355395317077637
         ],
         "rotation": [
           0.0,
@@ -173,9 +102,80 @@
           0.0
         ],
         "scale": [
-          2.0,
-          2.0,
-          2.0
+          1.5,
+          3.0,
+          1.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          255,
+          140,
+          0,
+          255
+        ],
+        "drawWires": true,
+        "type": "Capsule",
+        "wireColor": [
+          180,
+          70,
+          0,
+          255
+        ]
+      },
+      "name": "Orange Capsule",
+      "transform": {
+        "position": [
+          -2.0,
+          1.25,
+          -0.4736013412475586
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          2.5,
+          1.0
+        ]
+      }
+    },
+    {
+      "camera": {
+        "fovy": 45.0,
+        "isPrimary": true,
+        "orbital": true,
+        "position": [
+          0.0,
+          5.0,
+          3.1806581020355225
+        ],
+        "target": [
+          0.0,
+          1.0,
+          -6.819341659545898
+        ]
+      },
+      "name": "Game Camera",
+      "transform": {
+        "position": [
+          0.0,
+          5.0,
+          3.1806581020355225
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
         ]
       }
     }

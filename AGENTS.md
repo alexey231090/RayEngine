@@ -129,33 +129,65 @@ Instead, create a self-contained game layer in `src/game/YourGameLayer.hpp`:
 #include "core/Layer.hpp"
 #include "audio/SoundFX.hpp"
 #include "renderer/ParticleSystem3D.hpp"
+#include "ui/EngineFont.hpp"
 #include "raylib.h"
+#include "imgui.h"
 
 class MyGameLayer : public Layer {
 public:
-    void OnAttach() override {}
+    void OnAttach() override {
+        // Direct context access right from Layer (no manual wiring needed):
+        Camera3D cam = GetPrimaryCamera();
+        cam.position = (Vector3){ 0.0f, 12.0f, 15.0f };
+        cam.target = (Vector3){ 0.0f, 0.0f, 0.0f };
+        SetPrimaryCamera(cam);
+    }
+
     void OnUpdate(float dt) override {
         if (IsKeyPressed(KEY_SPACE)) {
             SoundFX::PlayCoin();
             ParticleSystem3D::Instance().EmitBurst({0, 2, 0}, 20, GOLD);
         }
     }
+
     void OnRender3D() override {
+        // Automatically lit with 3D directional sunlight and ambient illumination!
         DrawCube({0, 0, 0}, 2, 2, 2, RED);
     }
+
     void OnRenderUI() override {
-        ImGui::Begin("HUD");
-        ImGui::Text("Press SPACE for FX!");
+        // 1. Raylib 2D UI with native Cyrillic (UTF-8) support:
+        DrawTextUTF8("Очки: 100", 20, 20, 24, WHITE);
+
+        // 2. Dear ImGui HUD (safely works in BOTH Editor and Standalone Game modes!):
+        ImGui::Begin("Игровая Панель");
+        ImGui::Text("Нажмите ПРОБЕЛ для эффектов!");
         ImGui::End();
     }
 };
 ```
 Then plug it into `src/main.cpp`:
 ```cpp
+app.ClearScene();
 app.PushLayer<MyGameLayer>();
 ```
 
-### 2. Procedural Audio (`SoundFX`)
+### 2. Context Accessors in Layer (`GetScene()`, `GetPrimaryCamera()`)
+Layers have built-in direct access to engine subsystems:
+- `GetScene()`: Returns `Scene&` for ECS entity creation/deletion.
+- `GetPrimaryCamera()`: Returns current active `Camera3D`.
+- `SetPrimaryCamera(cam)`: Configures the game camera position/target.
+- `GetApp()`: Returns `Application&`.
+
+### 3. Cyrillic (UTF-8) Text Support
+The engine includes automatic Windows font loading (`segoeui.ttf` / `arial.ttf`) with full Cyrillic (0x0400–0x04FF) glyph ranges:
+- **Raylib 2D**: `DrawTextUTF8("Привет!", x, y, fontSize, color)`
+- **Dear ImGui**: `ImGui::Text("Привет, мир!")` works out of the box without `???`.
+
+### 4. Realistic 3D Directional Lighting
+3D primitives (`Cube`, `Sphere`, `Cylinder`, `Capsule`, `Plane`) are automatically rendered with a built-in directional sunlight and ambient shading shader, giving rich 3D depth and highlights.
+
+### 5. Procedural Audio (`SoundFX`)
 Play sounds directly from C++ without generating `.wav` files:
 - `SoundFX::PlayClick()` (UI / Move)
 - `SoundFX::PlayCoin()` (Score / Pickup)
@@ -164,13 +196,13 @@ Play sounds directly from C++ without generating `.wav` files:
 - `SoundFX::PlayLineClear()` (Level up / Combo)
 - `SoundFX::PlayTone(freq, duration)` (Procedural tone synth)
 
-### 3. 3D Particles (`ParticleSystem3D`)
+### 6. 3D Particles (`ParticleSystem3D`)
 Add immediate juice and explosions:
 ```cpp
 ParticleSystem3D::Instance().EmitBurst({x, y, z}, 25, ORANGE, 5.0f, 0.3f);
 ```
 
-### 4. Declarative World Editing (`scene.json`)
+### 7. Declarative World Editing (`scene.json`)
 To add static meshes or level geometry, edit `scene.json` directly. The engine serializes and deserializes entities, transforms, geometry, colors, and camera settings automatically.
 
 ---

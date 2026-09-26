@@ -17,6 +17,14 @@ Write-Host "============================================================" -Foreg
 Write-Host "   REngine -- Universal AI-First Build and Bootstrap System  " -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
+# 0. Terminate any running RaylibEngineApp processes to prevent Windows executable file locking
+$runningApps = Get-Process -Name "RaylibEngineApp" -ErrorAction SilentlyContinue
+if ($runningApps) {
+    Write-Host "[REngine] Found active RaylibEngineApp process(es). Terminating before build..." -ForegroundColor Yellow
+    $runningApps | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 300
+}
+
 # 1. Clean build directory if requested
 if ($Clean) {
     Write-Host "[REngine] Cleaning build directory..." -ForegroundColor Yellow

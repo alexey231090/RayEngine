@@ -27,10 +27,16 @@ public:
     Application(const AppConfig& config = AppConfig());
     ~Application();
 
+    static Application& Get() { return *s_instance; }
+
     void Run();
 
     Scene& GetScene() { return m_scene; }
     void ClearScene(bool keepPrimaryCamera = true);
+
+    Camera3D GetPrimaryCamera();
+    void SetPrimaryCamera(const Camera3D& camera);
+    const AppConfig& GetConfig() const { return m_config; }
 
     // Layer stack operations for game modularity
     void PushLayer(std::shared_ptr<Layer> layer);
@@ -58,6 +64,8 @@ private:
 
     Camera3D m_editorCamera;
     std::string m_sceneSnapshot;
+
+    static Application* s_instance;
 };
 
 } // namespace REngine

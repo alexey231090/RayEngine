@@ -3,14 +3,19 @@
 #include "scene/SceneSerializer.hpp"
 #include "audio/SoundFX.hpp"
 #include "renderer/ParticleSystem3D.hpp"
+#include "ui/EngineFont.hpp"
 #include "imgui.h"
+#include "rlImGui.h"
 #include "rcamera.h"
 #include <iostream>
 #include <algorithm>
 
 namespace REngine {
 
+Application* Application::s_instance = nullptr;
+
 Application::Application(const AppConfig& config) : m_config(config) {
+    s_instance = this;
     std::cout << "[REngine] [Init] Initializing engine..." << std::endl;
 
     unsigned int flags = FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT;
@@ -42,12 +47,19 @@ Application::Application(const AppConfig& config) : m_config(config) {
     m_editorCamera.fovy = 45.0f;
     m_editorCamera.projection = CAMERA_PERSPECTIVE;
 
+    // Initialize Cyrillic & UTF-8 Font subsystem
+    EngineFont::Init();
+
+    // Initialize 3D lighting shader
+    m_renderSystem.Init();
+
     if (!m_config.isGameMode) {
         m_editorLayer = std::make_unique<EditorLayer>(m_scene);
         m_editorLayer->Init();
         std::cout << "[REngine] [Init] EditorLayer (Dear ImGui) initialized successfully" << std::endl;
     } else {
-        std::cout << "[REngine] [Init] Running in STANDALONE GAME mode (Editor UI disabled)" << std::endl;
+        rlImGuiSetup(true);
+        std::cout << "[REngine] [Init] Running in STANDALONE GAME mode (Dear ImGui HUD runtime enabled)" << std::endl;
     }
 
     // Load specified scene file or default
@@ -89,11 +101,16 @@ Application::~Application() {
 
     if (m_editorLayer) {
         m_editorLayer->Shutdown();
+    } else if (m_config.isGameMode) {
+        rlImGuiShutdown();
     }
 
+    m_renderSystem.Shutdown();
+    EngineFont::Shutdown();
     SoundFX::Shutdown();
 
     CloseWindow();
+    s_instance = nullptr;
     std::cout << "[REngine] [Shutdown] Engine shut down cleanly with exit code 0" << std::endl;
 }
 
@@ -179,6 +196,32 @@ Camera3D Application::GetCurrentGameCamera() {
     return defaultCam;
 }
 
+Camera3D Application::GetPrimaryCamera() {
+    return GetCurrentGameCamera();
+}
+
+void Application::SetPrimaryCamera(const Camera3D& camera) {
+    auto view = m_scene.GetRegistry().view<CameraComponent>();
+    for (auto entity : view) {
+        auto& c = view.get<CameraComponent>(entity);
+        if (c.isPrimary) {
+            c.camera = camera;
+            if (m_scene.GetRegistry().all_of<TransformComponent>(entity)) {
+                m_scene.GetRegistry().get<TransformComponent>(entity).position = camera.position;
+            }
+            return;
+        }
+    }
+    // If no primary camera exists, create one
+    auto entity = m_scene.CreateEntity("Primary Game Camera");
+    auto& t = m_scene.GetRegistry().get<TransformComponent>(entity);
+    t.position = camera.position;
+    CameraComponent c;
+    c.camera = camera;
+    c.isPrimary = true;
+    m_scene.GetRegistry().emplace<CameraComponent>(entity, c);
+}
+
 void Application::HandleCameraInput() {
     ImGuiIO& io = ImGui::GetIO();
 
@@ -233,10 +276,12 @@ void Application::Run() {
                     }
                 EndMode3D();
 
-                // 3. Render 2D UI for Game Layers
+                // 3. Render 2D UI and Dear ImGui HUD for Game Layers
+                rlImGuiBegin();
                 for (auto& layer : m_layers) {
                     layer->OnRenderUI();
                 }
+                rlImGuiEnd();
 
             EndDrawing();
         } else {
