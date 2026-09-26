@@ -1,28 +1,27 @@
 {
   "entities": [
     {
-      "mesh": {
-        "color": [
-          230,
-          41,
-          55,
-          255
-        ],
-        "drawWires": true,
-        "type": "Cube",
-        "wireColor": [
-          190,
-          33,
-          55,
-          255
-        ]
-      },
-      "name": "Main Red Cube",
-      "transform": {
+      "camera": {
+        "fovy": 45.0,
+        "isPrimary": true,
+        "orbital": true,
         "position": [
-          1.620867133140564,
+          0.0,
+          5.0,
+          3.1806581020355225
+        ],
+        "target": [
+          0.0,
           1.0,
-          -4.190756797790527
+          -6.819341659545898
+        ]
+      },
+      "name": "Game Camera",
+      "transform": {
+        "position": [
+          0.0,
+          5.0,
+          3.1806581020355225
         ],
         "rotation": [
           0.0,
@@ -30,81 +29,9 @@
           0.0
         ],
         "scale": [
-          2.0,
-          2.0,
-          2.0
-        ]
-      }
-    },
-    {
-      "mesh": {
-        "color": [
-          0,
-          121,
-          241,
-          255
-        ],
-        "drawWires": true,
-        "type": "Sphere",
-        "wireColor": [
-          0,
-          82,
-          172,
-          255
-        ]
-      },
-      "name": "Blue Sphere",
-      "transform": {
-        "position": [
-          8.231781959533691,
           1.0,
-          -1.1910477876663208
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          2.0,
-          2.0,
-          2.0
-        ]
-      }
-    },
-    {
-      "mesh": {
-        "color": [
-          84,
-          97,
-          188,
-          255
-        ],
-        "drawWires": true,
-        "type": "Cylinder",
-        "wireColor": [
-          0,
-          117,
-          44,
-          255
-        ]
-      },
-      "name": "Green Pillar",
-      "transform": {
-        "position": [
-          -3.3080286979675293,
-          3.8861730098724365,
-          2.6355395317077637
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.5,
-          3.0,
-          1.5
+          1.0,
+          1.0
         ]
       }
     },
@@ -145,27 +72,28 @@
       }
     },
     {
-      "camera": {
-        "fovy": 45.0,
-        "isPrimary": true,
-        "orbital": true,
-        "position": [
-          0.0,
-          5.0,
-          3.1806581020355225
+      "mesh": {
+        "color": [
+          84,
+          97,
+          188,
+          255
         ],
-        "target": [
-          0.0,
-          1.0,
-          -6.819341659545898
+        "drawWires": true,
+        "type": "Cylinder",
+        "wireColor": [
+          0,
+          117,
+          44,
+          255
         ]
       },
-      "name": "Game Camera",
+      "name": "Green Pillar",
       "transform": {
         "position": [
-          0.0,
-          5.0,
-          3.1806581020355225
+          -3.3080286979675293,
+          1.2620059251785278,
+          -6.9037957191467285
         ],
         "rotation": [
           0.0,
@@ -173,9 +101,81 @@
           0.0
         ],
         "scale": [
+          1.5,
+          3.0,
+          1.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0,
+          121,
+          241,
+          255
+        ],
+        "drawWires": true,
+        "type": "Sphere",
+        "wireColor": [
+          0,
+          82,
+          172,
+          255
+        ]
+      },
+      "name": "Blue Sphere",
+      "transform": {
+        "position": [
+          2.257039785385132,
+          1.382615089416504,
+          -2.1504714488983154
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          2.0,
+          2.0,
+          2.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          230,
+          41,
+          55,
+          255
+        ],
+        "drawWires": true,
+        "type": "Cube",
+        "wireColor": [
+          190,
+          33,
+          55,
+          255
+        ]
+      },
+      "name": "Main Red Cube",
+      "transform": {
+        "position": [
+          1.620867133140564,
           1.0,
-          1.0,
-          1.0
+          -4.190756797790527
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          2.0,
+          2.0,
+          2.0
         ]
       }
     }
