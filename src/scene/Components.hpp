@@ -25,7 +25,8 @@ enum class MeshGeometryType {
     Cube = 0,
     Sphere = 1,
     Cylinder = 2,
-    Plane = 3
+    Plane = 3,
+    Capsule = 4
 };
 
 struct MeshComponent {

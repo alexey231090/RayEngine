@@ -10,10 +10,10 @@ public:
     RenderSystem() = default;
     ~RenderSystem() = default;
 
-    void Render(Scene& scene, const Camera3D& camera, bool isEditMode = true);
+    void Render(Scene& scene, const Camera3D& camera, bool isEditMode = true, entt::entity selectedEntity = entt::null);
 
 private:
-    void DrawCameraGizmo(const Camera3D& gameCamera);
+    void DrawCameraGizmo(const Camera3D& gameCamera, bool isSelected = false);
 };
 
 } // namespace REngine

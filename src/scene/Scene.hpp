@@ -14,7 +14,7 @@ public:
 
     entt::entity CreateEntity(const std::string& name = "Entity");
     void DestroyEntity(entt::entity entity);
-    void Clear();
+    void Clear(bool keepPrimaryCamera = false);
 
     entt::registry& GetRegistry() { return m_registry; }
     const entt::registry& GetRegistry() const { return m_registry; }

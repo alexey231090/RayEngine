@@ -111,6 +111,10 @@ bool Gizmo::UpdateAndRender(const Camera3D& camera, Vector3& position, bool allo
     Color colY = (m_hoveredAxis == GizmoAxis::Y || m_activeAxis == GizmoAxis::Y) ? YELLOW : LIME;
     Color colZ = (m_hoveredAxis == GizmoAxis::Z || m_activeAxis == GizmoAxis::Z) ? YELLOW : (Color){ 0, 150, 255, 255 };
 
+    // Draw Gizmo arrows with depth test disabled and batch flushed so they are ALWAYS visible
+    rlDrawRenderBatchActive();
+    rlDisableDepthTest();
+
     // Draw central origin sphere
     DrawSphere(position, m_cylinderRadius * 1.8f, WHITE);
 
@@ -118,6 +122,9 @@ bool Gizmo::UpdateAndRender(const Camera3D& camera, Vector3& position, bool allo
     DrawArrow(position, endX, colX, m_cylinderRadius, m_coneRadius, m_coneLength);
     DrawArrow(position, endY, colY, m_cylinderRadius, m_coneRadius, m_coneLength);
     DrawArrow(position, endZ, colZ, m_cylinderRadius, m_coneRadius, m_coneLength);
+
+    rlDrawRenderBatchActive();
+    rlEnableDepthTest();
 
     return m_isDragging;
 }

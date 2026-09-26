@@ -4,6 +4,7 @@
 #include "scene/Scene.hpp"
 #include "entt/entt.hpp"
 #include "Gizmo.hpp"
+#include <string>
 
 namespace REngine {
 
@@ -38,6 +39,13 @@ public:
     }
 
     bool IsGizmoDragging() const { return m_gizmo.IsDragging(); }
+    bool IsGizmoHovered() const { return m_gizmo.IsHovered(); }
+
+    void HandleMousePicking(const Camera3D& camera);
+
+    void PlayGame();
+    void StopGame();
+    bool IsGameProcessRunning() const;
 
 private:
     void DrawToolbarPanel();

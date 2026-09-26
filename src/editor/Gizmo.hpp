@@ -20,9 +20,11 @@ public:
     bool UpdateAndRender(const Camera3D& camera, Vector3& position, bool allowInteraction);
 
     bool IsDragging() const { return m_isDragging; }
+    bool IsHovered() const { return m_hoveredAxis != GizmoAxis::None; }
+
+    GizmoAxis CheckHover(const Camera3D& camera, const Vector3& position);
 
 private:
-    GizmoAxis CheckHover(const Camera3D& camera, const Vector3& position);
     void DrawArrow(const Vector3& start, const Vector3& end, Color color, float cylinderRadius, float coneRadius, float coneLength);
 
 private:

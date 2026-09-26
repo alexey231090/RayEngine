@@ -1,11 +1,82 @@
 {
   "entities": [
     {
+      "camera": {
+        "fovy": 45.0,
+        "isPrimary": true,
+        "orbital": true,
+        "position": [
+          0.0,
+          5.0,
+          3.1806581020355225
+        ],
+        "target": [
+          0.0,
+          1.0,
+          -6.819341659545898
+        ]
+      },
+      "name": "Game Camera",
+      "transform": {
+        "position": [
+          0.0,
+          5.0,
+          3.1806581020355225
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
       "mesh": {
         "color": [
+          255,
+          140,
           0,
-          158,
-          47,
+          255
+        ],
+        "drawWires": true,
+        "type": "Capsule",
+        "wireColor": [
+          180,
+          70,
+          0,
+          255
+        ]
+      },
+      "name": "Orange Capsule",
+      "transform": {
+        "position": [
+          -2.0,
+          1.25,
+          -0.4736013412475586
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          2.5,
+          1.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          84,
+          97,
+          188,
           255
         ],
         "drawWires": true,
@@ -20,9 +91,9 @@
       "name": "Green Pillar",
       "transform": {
         "position": [
-          -4.0,
-          1.5,
-          0.0
+          -3.3080286979675293,
+          3.8861730098724365,
+          2.6355395317077637
         ],
         "rotation": [
           0.0,
@@ -56,9 +127,9 @@
       "name": "Blue Sphere",
       "transform": {
         "position": [
-          4.0,
+          8.231781959533691,
           1.0,
-          0.0
+          -1.1910477876663208
         ],
         "rotation": [
           0.0,
@@ -92,9 +163,9 @@
       "name": "Main Red Cube",
       "transform": {
         "position": [
-          0.0,
+          1.620867133140564,
           1.0,
-          0.0
+          -4.190756797790527
         ],
         "rotation": [
           0.0,

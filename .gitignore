@@ -2,6 +2,7 @@
 build/
 bin/
 out/
+.tools/
 
 # CMake temporary files
 CMakeCache.txt

@@ -19,6 +19,7 @@ struct AppConfig {
     int testFrames = -1; // -1 for infinite interactive loop, > 0 for automated exit after N frames
     bool headless = false; // Run with hidden window for automated testing
     std::string scenePath = "scene.json"; // Scene file to load
+    bool isGameMode = false; // Run standalone game window without Editor UI (Godot style)
 };
 
 class Application {
@@ -29,6 +30,7 @@ public:
     void Run();
 
     Scene& GetScene() { return m_scene; }
+    void ClearScene(bool keepPrimaryCamera = true);
 
     // Layer stack operations for game modularity
     void PushLayer(std::shared_ptr<Layer> layer);

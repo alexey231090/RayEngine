@@ -21,8 +21,23 @@ void Scene::DestroyEntity(entt::entity entity) {
     }
 }
 
-void Scene::Clear() {
-    m_registry.clear();
+void Scene::Clear(bool keepPrimaryCamera) {
+    if (!keepPrimaryCamera) {
+        m_registry.clear();
+        return;
+    }
+
+    entt::entity primaryCam = GetPrimaryCameraEntity();
+    auto view = m_registry.view<TagComponent>();
+    std::vector<entt::entity> toDestroy;
+    for (auto entity : view) {
+        if (entity != primaryCam) {
+            toDestroy.push_back(entity);
+        }
+    }
+    for (auto entity : toDestroy) {
+        m_registry.destroy(entity);
+    }
 }
 
 entt::entity Scene::GetPrimaryCameraEntity() {

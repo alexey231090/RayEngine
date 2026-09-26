@@ -19,12 +19,18 @@ Application::Application(const AppConfig& config) : m_config(config) {
         std::cout << "[REngine] [Init] Running in HEADLESS mode (window hidden)" << std::endl;
     }
 
+    if (m_config.isGameMode) {
+        m_config.title = "REngine Game - Standalone Window";
+    } else {
+        m_config.title = "REngine Editor";
+    }
+
     SetConfigFlags(flags);
     InitWindow(m_config.width, m_config.height, m_config.title.c_str());
     SetTargetFPS(m_config.targetFPS);
 
     std::cout << "[REngine] [Init] Window initialized: " << m_config.width << "x" << m_config.height 
-              << " @ " << m_config.targetFPS << " FPS target" << std::endl;
+              << " @ " << m_config.targetFPS << " FPS target (Title: '" << m_config.title << "')" << std::endl;
 
     // Initialize procedural audio
     SoundFX::Init();
@@ -36,9 +42,13 @@ Application::Application(const AppConfig& config) : m_config(config) {
     m_editorCamera.fovy = 45.0f;
     m_editorCamera.projection = CAMERA_PERSPECTIVE;
 
-    m_editorLayer = std::make_unique<EditorLayer>(m_scene);
-    m_editorLayer->Init();
-    std::cout << "[REngine] [Init] EditorLayer (Dear ImGui) initialized successfully" << std::endl;
+    if (!m_config.isGameMode) {
+        m_editorLayer = std::make_unique<EditorLayer>(m_scene);
+        m_editorLayer->Init();
+        std::cout << "[REngine] [Init] EditorLayer (Dear ImGui) initialized successfully" << std::endl;
+    } else {
+        std::cout << "[REngine] [Init] Running in STANDALONE GAME mode (Editor UI disabled)" << std::endl;
+    }
 
     // Load specified scene file or default
     SceneSerializer serializer(m_scene);
@@ -55,6 +65,8 @@ Application::Application(const AppConfig& config) : m_config(config) {
         // Ensure scene has at least one camera
         if (m_scene.GetPrimaryCameraEntity() == entt::null) {
             auto camEntity = m_scene.CreateEntity("Main Camera");
+            auto& camTransform = m_scene.GetRegistry().get<TransformComponent>(camEntity);
+            camTransform.position = (Vector3){ 0.0f, 4.0f, 9.0f };
             CameraComponent cam;
             cam.camera.position = (Vector3){ 0.0f, 4.0f, 9.0f };
             cam.camera.target = (Vector3){ 0.0f, 1.0f, 0.0f };
@@ -83,6 +95,14 @@ Application::~Application() {
 
     CloseWindow();
     std::cout << "[REngine] [Shutdown] Engine shut down cleanly with exit code 0" << std::endl;
+}
+
+void Application::ClearScene(bool keepPrimaryCamera) {
+    m_scene.Clear(keepPrimaryCamera);
+    if (m_editorLayer) {
+        m_editorLayer->SetSelectedEntity(entt::null);
+    }
+    std::cout << "[REngine] [Scene] Scene cleared of demo objects (Camera preserved)" << std::endl;
 }
 
 void Application::PushLayer(std::shared_ptr<Layer> layer) {
@@ -124,6 +144,8 @@ void Application::InitDemoScene() {
 
     // 4. Main Game Camera
     auto camEntity = m_scene.CreateEntity("Main Camera");
+    auto& camTransform = m_scene.GetRegistry().get<TransformComponent>(camEntity);
+    camTransform.position = (Vector3){ 0.0f, 4.0f, 9.0f };
     CameraComponent cam;
     cam.camera.position = (Vector3){ 0.0f, 4.0f, 9.0f };
     cam.camera.target = (Vector3){ 0.0f, 1.0f, 0.0f };
@@ -177,14 +199,12 @@ void Application::HandleCameraInput() {
 void Application::Run() {
     int frameCounter = 0;
 
-    std::cout << "[REngine] [Run] Entering main loop (Mode: EDIT)..." << std::endl;
+    std::cout << "[REngine] [Run] Entering main loop (Mode: " 
+              << (m_config.isGameMode ? "STANDALONE GAME" : "EDITOR") << ")..." << std::endl;
 
     while (!WindowShouldClose()) {
         frameCounter++;
         float dt = GetFrameTime();
-
-        EngineMode mode = m_editorLayer->GetEngineMode();
-        bool isEditMode = (mode == EngineMode::Edit);
 
         // Update particle system
         ParticleSystem3D::Get().OnUpdate(dt);
@@ -194,64 +214,74 @@ void Application::Run() {
             layer->OnUpdate(dt);
         }
 
-        // Handle Mode Switch (Play / Stop)
-        if (m_editorLayer->HasModeChanged()) {
-            if (mode == EngineMode::Play) {
-                // Snapshot scene state before playing
-                SceneSerializer serializer(m_scene);
-                m_sceneSnapshot = serializer.SerializeToString();
-                std::cout << "[REngine] [Mode] Switched to PLAY mode (Scene snapshot saved)" << std::endl;
-                SoundFX::PlayCoin();
-            } else {
-                // Restore scene state from snapshot
-                if (!m_sceneSnapshot.empty()) {
-                    SceneSerializer serializer(m_scene);
-                    serializer.DeserializeFromString(m_sceneSnapshot);
-                    m_editorLayer->SetSelectedEntity(entt::null);
-                    std::cout << "[REngine] [Mode] Switched to EDIT mode (Scene snapshot restored)" << std::endl;
-                    SoundFX::PlayClick();
-                }
-            }
-        }
+        if (m_config.isGameMode) {
+            // ================= STANDALONE GAME MODE =================
+            Camera3D gameCamera = GetCurrentGameCamera();
 
-        // Camera handling
-        Camera3D activeCamera;
-        if (isEditMode) {
-            HandleCameraInput();
-            activeCamera = m_editorCamera;
-        } else {
-            activeCamera = GetCurrentGameCamera();
-        }
+            BeginDrawing();
+                ClearBackground((Color){ 25, 25, 30, 255 });
 
-        BeginDrawing();
-            ClearBackground((Color){ 25, 25, 30, 255 });
+                // 1. Render 3D Scene using Game Camera
+                m_renderSystem.Render(m_scene, gameCamera, false);
 
-            // 1. Render 3D Scene
-            m_renderSystem.Render(m_scene, activeCamera, isEditMode);
+                // 2. Render 3D Particles and Game Layers
+                BeginMode3D(gameCamera);
+                    ParticleSystem3D::Get().OnRender3D();
 
-            // 2. Render 3D Particles and 3D Game Layers
-            BeginMode3D(activeCamera);
-                ParticleSystem3D::Get().OnRender3D();
+                    for (auto& layer : m_layers) {
+                        layer->OnRender3D();
+                    }
+                EndMode3D();
 
-                for (auto& layer : m_layers) {
-                    layer->OnRender3D();
-                }
-
-                if (isEditMode) {
-                    m_editorLayer->RenderGizmo(activeCamera);
-                }
-            EndMode3D();
-
-            // 3. Render 2D UI (Editor Panels & Game UI)
-            m_editorLayer->BeginFrame();
-                m_editorLayer->RenderUI();
-
+                // 3. Render 2D UI for Game Layers
                 for (auto& layer : m_layers) {
                     layer->OnRenderUI();
                 }
-            m_editorLayer->EndFrame();
 
-        EndDrawing();
+            EndDrawing();
+        } else {
+            // ================= EDITOR MODE =================
+            HandleCameraInput();
+            Camera3D activeCamera = m_editorCamera;
+
+            // Handle 3D Mouse Picking to select objects directly in the viewport
+            if (m_editorLayer) {
+                m_editorLayer->HandleMousePicking(activeCamera);
+            }
+
+            BeginDrawing();
+                ClearBackground((Color){ 25, 25, 30, 255 });
+
+                // 1. Render 3D Scene in Edit mode
+                entt::entity selectedEntity = m_editorLayer ? m_editorLayer->GetSelectedEntity() : entt::null;
+                m_renderSystem.Render(m_scene, activeCamera, true, selectedEntity);
+
+                // 2. Render 3D Particles, Game Layers, Gizmo
+                BeginMode3D(activeCamera);
+                    ParticleSystem3D::Get().OnRender3D();
+
+                    for (auto& layer : m_layers) {
+                        layer->OnRender3D();
+                    }
+
+                    if (m_editorLayer) {
+                        m_editorLayer->RenderGizmo(activeCamera);
+                    }
+                EndMode3D();
+
+                // 3. Render Dear ImGui Editor UI
+                if (m_editorLayer) {
+                    m_editorLayer->BeginFrame();
+                    m_editorLayer->RenderUI();
+
+                    for (auto& layer : m_layers) {
+                        layer->OnRenderUI();
+                    }
+                    m_editorLayer->EndFrame();
+                }
+
+            EndDrawing();
+        }
 
         // Automated test frame handling
         if (m_config.testFrames > 0) {

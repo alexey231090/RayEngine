@@ -17,21 +17,28 @@ A lightweight, modern 3D Game Engine built on top of **C++17**, **[Raylib 5.0](h
   - `--headless`: Runs with a hidden window, ideal for CI pipelines and headless AI background verification.
   - `--scene <path>`: Loads a specific scene file.
 - **Visual Editor for Humans**: Embedded **Dear ImGui**:
-  - **3D Gizmo Translators**: Interactive X, Y, Z coordinate arrows to drag objects with mouse in 3D viewport (just like in Unity).
-  - **Simulation Modes (Play / Stop)**: Toggle between `Edit Mode` (free camera & gizmos) and `Play Mode` (game camera view with automatic scene state restoration).
+  - **Godot-Style Standalone Game Execution**: Pressing **▶ Play** (or F5) in the Editor saves the scene and launches the Game in an **independent, dedicated window** (`--game`), providing zero ImGui overhead and pure game rendering! Pressing **⏹ Stop** cleanly terminates the game window.
+  - **3D Gizmo Translators**: Interactive X, Y, Z coordinate arrows to drag objects with mouse in 3D viewport.
   - **Scene Hierarchy & Inspector**: Browse, spawn, delete entities, and live-edit transforms, colors, and camera FOV.
   - **Hot Reload**: One-click `Save JSON` and `Load JSON`.
 - **Zero Manual Pre-installation & Git Independence**: Raylib 5.0, EnTT, nlohmann_json, and Dear ImGui are automatically resolved as release ZIP archives via CMake `FetchContent`.
-- **Self-Healing Build System**: `build.bat` automatically invalidates stale CMake paths if the project directory is moved or copied, and handles Windows Defender lock recovery.
+- **Self-Healing & Auto-Bootstrapping Build System**: `build.bat` works on ANY fresh Windows machine! If CMake, Ninja, or a C++ compiler are missing, it automatically downloads and extracts a portable toolchain into local `.tools/` without requiring admin rights. It also invalidates stale CMake paths if the repository is moved or renamed, and automatically retries if Windows Defender locks files.
 
 ---
 
 ## Build & Run
 
-### Quick Build (Windows)
+### Quick Build (Windows — 1-Click Out-of-the-Box)
 ```cmd
 .\build.bat
 .\run.bat
+```
+> **Zero configuration needed**: `build.bat` auto-detects system compilers (GCC, Clang, MSVC) or automatically downloads a portable toolchain to `.tools/` if none are installed.
+
+### Optional: Install Tools Globally (For Developers)
+If you prefer having the tools installed system-wide in Windows:
+```cmd
+winget install --id Kitware.CMake Ninja-build.Ninja LLVM.LLVM -e --accept-source-agreements --accept-package-agreements
 ```
 
 ### Standard CMake Presets (Cross-Platform)
@@ -72,6 +79,8 @@ REngine/
 │   ├── core/
 │   │   ├── Application.hpp       # Main engine loop and Raylib window lifecycle
 │   │   ├── Application.cpp
+│   │   ├── ProcessRunner.hpp     # Godot-style standalone game process launcher
+│   │   ├── ProcessRunner.cpp
 │   │   └── Layer.hpp             # Base Layer interface (OnAttach, OnUpdate, OnRender3D, OnRenderUI)
 │   ├── audio/
 │   │   ├── SoundFX.hpp           # Procedural sound effect synthesizer
@@ -81,8 +90,7 @@ REngine/
 │   │   ├── RenderSystem.cpp
 │   │   ├── ParticleSystem3D.hpp  # 3D particle emitter and explosion system
 │   │   └── ParticleSystem3D.cpp
-│   ├── game/
-│   │   └── TetrisDemoLayer.hpp   # 3D Tetris demo layer showcasing audio, particles & HUD
+│   ├── game/                     # Clean directory reserved for user game layers
 │   ├── scene/
 │   │   ├── Components.hpp        # ECS POD components (Transform, Mesh, Tag, Camera)
 │   │   ├── Scene.hpp             # EnTT registry wrapper and entity management

@@ -16,20 +16,21 @@ This skill enables AI coding agents (Antigravity, Claude Code, Cursor, Codex) to
    - Do NOT edit `src/editor/*` or `src/scene/*`.
 2. **Build your game in a dedicated Layer**:
    - Create a single self-contained header/class in `src/game/YourGameLayer.hpp`.
-   - Register it in `src/main.cpp`:
+   - Clear the demo entities and register your layer in `src/main.cpp`:
      ```cpp
+     app.ClearScene(); // Clears demo cube/sphere/pillar, preserves camera
      app.PushLayer<YourGameLayer>();
      ```
 3. **Always verify with `--test-frames 60`**:
    - Build: `.\build.bat`
-   - Test: `.\build\RaylibEngineApp.exe --test-frames 60`
+   - Test: `.\build\RaylibEngineApp.exe --game --test-frames 60 --headless`
    - Never run `RaylibEngineApp.exe` interactively without test flags — it will freeze your terminal.
 
 ---
 
 ## 2. Standard GameLayer Template
 
-Every game in REngine is a subclass of [Layer](file:///e:/Programm/Projects/REngine/src/core/Layer.hpp):
+Every game in REngine is a subclass of [Layer](src/core/Layer.hpp):
 
 ```cpp
 #pragma once
@@ -159,9 +160,13 @@ In `src/main.cpp`:
 #include "game/YourGameLayer.hpp" // 1. Include your layer
 
 int main(int argc, char* argv[]) {
-    Application app(argc, argv);
+    REngine::AppConfig config;
+    REngine::Application app(config);
     
-    // 2. Push your game layer onto the stack
+    // 2. Clear demo scene entities (cube, sphere, cylinder)
+    app.ClearScene();
+    
+    // 3. Push your game layer onto the stack
     app.PushLayer<YourGameLayer>();
     
     app.Run();

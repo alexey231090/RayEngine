@@ -1,15 +1,19 @@
 #include "EditorLayer.hpp"
 #include "imgui.h"
 #include "rlImGui.h"
+#include "raymath.h"
 #include "scene/SceneSerializer.hpp"
 #include "scene/Components.hpp"
+#include "core/ProcessRunner.hpp"
 #include <iostream>
 
 namespace REngine {
 
 EditorLayer::EditorLayer(Scene& scene) : m_scene(scene) {}
 
-EditorLayer::~EditorLayer() {}
+EditorLayer::~EditorLayer() {
+    Shutdown();
+}
 
 void EditorLayer::Init() {
     rlImGuiSetup(true);
@@ -19,6 +23,7 @@ void EditorLayer::Init() {
 }
 
 void EditorLayer::Shutdown() {
+    ProcessRunner::StopGameProcess();
     rlImGuiShutdown();
 }
 
@@ -37,8 +42,107 @@ void EditorLayer::RenderGizmo(const Camera3D& camera) {
     if (m_selectedEntity != entt::null && registry.valid(m_selectedEntity)) {
         if (registry.all_of<TransformComponent>(m_selectedEntity)) {
             auto& transform = registry.get<TransformComponent>(m_selectedEntity);
+
+            // If selected entity has CameraComponent, ensure transform starts synced to camera position
+            if (registry.all_of<CameraComponent>(m_selectedEntity) && !m_gizmo.IsDragging()) {
+                const auto& cam = registry.get<CameraComponent>(m_selectedEntity);
+                transform.position = cam.camera.position;
+            }
+
+            Vector3 prevPos = transform.position;
             bool allowInteraction = !ImGui::GetIO().WantCaptureMouse;
             m_gizmo.UpdateAndRender(camera, transform.position, allowInteraction);
+
+            // If position changed, update camera position and target
+            if (registry.all_of<CameraComponent>(m_selectedEntity)) {
+                Vector3 delta = Vector3Subtract(transform.position, prevPos);
+                if (Vector3LengthSqr(delta) > 0.000001f) {
+                    auto& camComp = registry.get<CameraComponent>(m_selectedEntity);
+                    camComp.camera.position = transform.position;
+                    camComp.camera.target = Vector3Add(camComp.camera.target, delta);
+                }
+            }
+        }
+    }
+}
+
+void EditorLayer::HandleMousePicking(const Camera3D& camera) {
+    if (m_mode != EngineMode::Edit) return;
+
+    ImGuiIO& io = ImGui::GetIO();
+    // Do not pick if ImGui is capturing mouse, or if dragging / hovering gizmo
+    if (io.WantCaptureMouse || m_gizmo.IsDragging() || m_gizmo.IsHovered()) {
+        return;
+    }
+
+    auto& registry = m_scene.GetRegistry();
+
+    // If an entity is already selected, check if user is clicking on gizmo arrows
+    if (m_selectedEntity != entt::null && registry.valid(m_selectedEntity)) {
+        if (registry.all_of<TransformComponent>(m_selectedEntity)) {
+            const auto& t = registry.get<TransformComponent>(m_selectedEntity);
+            if (m_gizmo.CheckHover(camera, t.position) != GizmoAxis::None) {
+                return; // User clicked on gizmo arrow, do not pick/deselect!
+            }
+        }
+    }
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        Ray ray = GetMouseRay(GetMousePosition(), camera);
+
+        float closestDist = 999999.0f;
+        entt::entity hitEntity = entt::null;
+
+        // Check mesh entities
+        auto meshView = registry.view<TransformComponent, MeshComponent>();
+        for (auto entity : meshView) {
+            const auto& t = meshView.get<TransformComponent>(entity);
+            const auto& m = meshView.get<MeshComponent>(entity);
+
+            RayCollision col = { 0 };
+            if (m.geometryType == MeshGeometryType::Sphere) {
+                float radius = t.scale.x * 0.5f;
+                col = GetRayCollisionSphere(ray, t.position, radius);
+            } else {
+                Vector3 halfScale = { t.scale.x * 0.5f, t.scale.y * 0.5f, t.scale.z * 0.5f };
+                BoundingBox box = {
+                    Vector3Subtract(t.position, halfScale),
+                    Vector3Add(t.position, halfScale)
+                };
+                col = GetRayCollisionBox(ray, box);
+            }
+
+            if (col.hit && col.distance < closestDist) {
+                closestDist = col.distance;
+                hitEntity = entity;
+            }
+        }
+
+        // Check camera entities
+        auto camView = registry.view<CameraComponent>();
+        for (auto entity : camView) {
+            const auto& c = camView.get<CameraComponent>(entity);
+            BoundingBox camBox = {
+                Vector3Subtract(c.camera.position, (Vector3){ 0.5f, 0.5f, 0.5f }),
+                Vector3Add(c.camera.position, (Vector3){ 0.5f, 0.5f, 0.5f })
+            };
+            RayCollision col = GetRayCollisionBox(ray, camBox);
+            if (col.hit && col.distance < closestDist) {
+                closestDist = col.distance;
+                hitEntity = entity;
+            }
+        }
+
+        if (hitEntity != entt::null) {
+            m_selectedEntity = hitEntity;
+            if (registry.all_of<TransformComponent>(hitEntity) && registry.all_of<CameraComponent>(hitEntity)) {
+                registry.get<TransformComponent>(hitEntity).position = registry.get<CameraComponent>(hitEntity).camera.position;
+            }
+            if (registry.all_of<TagComponent>(hitEntity)) {
+                m_statusMessage = "Selected: " + registry.get<TagComponent>(hitEntity).tag;
+            }
+        } else {
+            m_selectedEntity = entt::null;
         }
     }
 }
@@ -50,21 +154,51 @@ void EditorLayer::RenderUI() {
     DrawStatsPanel();
 }
 
+void EditorLayer::PlayGame() {
+    SceneSerializer serializer(m_scene);
+    serializer.Serialize(m_sceneFilePath);
+    if (ProcessRunner::LaunchGameProcess(m_sceneFilePath)) {
+        m_mode = EngineMode::Play;
+        m_modeChanged = true;
+        m_statusMessage = "Game launched in separate window (Godot-style)";
+    } else {
+        m_statusMessage = "Failed to launch game process!";
+    }
+}
+
+void EditorLayer::StopGame() {
+    ProcessRunner::StopGameProcess();
+    m_mode = EngineMode::Edit;
+    m_modeChanged = true;
+    m_statusMessage = "Game stopped";
+}
+
+bool EditorLayer::IsGameProcessRunning() const {
+    return ProcessRunner::IsGameRunning();
+}
+
 void EditorLayer::DrawToolbarPanel() {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(520, 100), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(560, 100), ImGuiCond_FirstUseEver);
 
     if (ImGui::Begin("Engine Controls & Simulation")) {
-        // Play / Stop buttons
-        if (m_mode == EngineMode::Edit) {
+        bool isGameActive = ProcessRunner::IsGameRunning();
+
+        // If child process terminated on its own, restore Edit state
+        if (!isGameActive && m_mode == EngineMode::Play) {
+            m_mode = EngineMode::Edit;
+            m_modeChanged = true;
+            m_statusMessage = "Game window closed";
+        }
+
+        // Play / Stop buttons (Godot style separate window)
+        if (!isGameActive) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.65f, 0.25f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.80f, 0.35f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.20f, 1.0f));
 
-            if (ImGui::Button("  ▶ Play  ", ImVec2(100, 32))) {
-                m_mode = EngineMode::Play;
-                m_modeChanged = true;
-                m_statusMessage = "Game Simulation Started";
+            if (ImGui::Button("  ▶ Play Window (F5)  ", ImVec2(180, 32)) || (IsKeyPressed(KEY_F5) && !ImGui::GetIO().WantCaptureKeyboard)) {
+                PlayGame();
             }
             ImGui::PopStyleColor(3);
         } else {
@@ -72,10 +206,8 @@ void EditorLayer::DrawToolbarPanel() {
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.95f, 0.30f, 0.30f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.15f, 0.15f, 1.0f));
 
-            if (ImGui::Button("  ⏹ Stop  ", ImVec2(100, 32))) {
-                m_mode = EngineMode::Edit;
-                m_modeChanged = true;
-                m_statusMessage = "Game Stopped - State Restored";
+            if (ImGui::Button("  ⏹ Stop Game Window  ", ImVec2(180, 32))) {
+                StopGame();
             }
             ImGui::PopStyleColor(3);
         }
@@ -105,12 +237,19 @@ void EditorLayer::DrawToolbarPanel() {
             }
         }
 
+        ImGui::SameLine();
+        if (ImGui::Button("Clear Scene")) {
+            m_scene.Clear(true);
+            m_selectedEntity = entt::null;
+            m_statusMessage = "Scene cleared (Camera preserved)";
+        }
+
         // Status text and current mode
         ImGui::SameLine();
-        if (m_mode == EngineMode::Play) {
-            ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "[PLAYING]");
+        if (isGameActive) {
+            ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "[GAME WINDOW ACTIVE]");
         } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "[EDIT MODE]");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "[EDITOR]");
         }
 
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Status: %s", m_statusMessage.c_str());
@@ -141,8 +280,18 @@ void EditorLayer::DrawHierarchyPanel() {
             m_selectedEntity = entity;
         }
         ImGui::SameLine();
+        if (ImGui::Button("+ Capsule")) {
+            auto entity = m_scene.CreateEntity("Capsule");
+            m_scene.GetRegistry().emplace<MeshComponent>(entity, MeshGeometryType::Capsule, (Color){ 255, 140, 0, 255 }, (Color){ 180, 70, 0, 255 });
+            auto& t = m_scene.GetRegistry().get<TransformComponent>(entity);
+            t.scale = (Vector3){ 1.0f, 2.5f, 1.0f };
+            m_selectedEntity = entity;
+        }
+        ImGui::SameLine();
         if (ImGui::Button("+ Camera")) {
             auto entity = m_scene.CreateEntity("Game Camera");
+            auto& t = m_scene.GetRegistry().get<TransformComponent>(entity);
+            t.position = (Vector3){ 0.0f, 5.0f, 10.0f };
             CameraComponent cam;
             cam.camera.position = (Vector3){ 0.0f, 5.0f, 10.0f };
             cam.camera.target = (Vector3){ 0.0f, 1.0f, 0.0f };
@@ -166,6 +315,9 @@ void EditorLayer::DrawHierarchyPanel() {
             std::string label = icon + tag.tag + " ##" + std::to_string((uint32_t)entity);
             if (ImGui::Selectable(label.c_str(), isSelected)) {
                 m_selectedEntity = entity;
+                if (registry.all_of<TransformComponent>(entity) && registry.all_of<CameraComponent>(entity)) {
+                    registry.get<TransformComponent>(entity).position = registry.get<CameraComponent>(entity).camera.position;
+                }
             }
         }
 
@@ -214,7 +366,14 @@ void EditorLayer::DrawInspectorPanel() {
 
                 float pos[3] = { transform.position.x, transform.position.y, transform.position.z };
                 if (ImGui::DragFloat3("Position", pos, 0.05f)) {
+                    Vector3 oldPos = transform.position;
                     transform.position = { pos[0], pos[1], pos[2] };
+                    Vector3 delta = Vector3Subtract(transform.position, oldPos);
+                    if (registry.all_of<CameraComponent>(m_selectedEntity)) {
+                        auto& cam = registry.get<CameraComponent>(m_selectedEntity);
+                        cam.camera.position = transform.position;
+                        cam.camera.target = Vector3Add(cam.camera.target, delta);
+                    }
                 }
 
                 float rot[3] = { transform.rotation.x, transform.rotation.y, transform.rotation.z };
@@ -235,7 +394,7 @@ void EditorLayer::DrawInspectorPanel() {
             if (ImGui::CollapsingHeader("Mesh Renderer", ImGuiTreeNodeFlags_DefaultOpen)) {
                 auto& mesh = registry.get<MeshComponent>(m_selectedEntity);
 
-                const char* geometries[] = { "Cube", "Sphere", "Cylinder", "Plane" };
+                const char* geometries[] = { "Cube", "Sphere", "Cylinder", "Plane", "Capsule" };
                 int currentType = (int)mesh.geometryType;
                 if (ImGui::Combo("Geometry", &currentType, geometries, IM_ARRAYSIZE(geometries))) {
                     mesh.geometryType = (MeshGeometryType)currentType;
@@ -289,7 +448,13 @@ void EditorLayer::DrawInspectorPanel() {
 
                 float cpos[3] = { cam.camera.position.x, cam.camera.position.y, cam.camera.position.z };
                 if (ImGui::DragFloat3("Cam Position", cpos, 0.1f)) {
+                    Vector3 oldPos = cam.camera.position;
                     cam.camera.position = { cpos[0], cpos[1], cpos[2] };
+                    Vector3 delta = Vector3Subtract(cam.camera.position, oldPos);
+                    cam.camera.target = Vector3Add(cam.camera.target, delta);
+                    if (registry.all_of<TransformComponent>(m_selectedEntity)) {
+                        registry.get<TransformComponent>(m_selectedEntity).position = cam.camera.position;
+                    }
                 }
 
                 float ctarget[3] = { cam.camera.target.x, cam.camera.target.y, cam.camera.target.z };

@@ -20,8 +20,29 @@ It is specifically optimized for autonomous AI coding agents (Antigravity, Claud
 
 ## AI Agent Skill (Superpower for LLMs)
 For instant game creation workflows, consult the specialized AI Skill file:
-`[rengine-game-dev](file:///.agents/skills/rengine-game-dev/SKILL.md)`
+[.agents/skills/rengine-game-dev/SKILL.md](file:///.agents/skills/rengine-game-dev/SKILL.md)
 It contains complete copy-paste templates, API cheatsheets, and recipes for building games in 1 prompt.
+
+---
+
+## Toolchain & Portability Guidelines (CRITICAL FOR AI)
+
+1. **Zero-Config Build with Auto-Bootstrap**:
+   `.\build.bat` is 100% self-contained and autonomous.
+   - If `cmake`, `ninja`, or a C++ compiler (`gcc`/`g++`) are not found in the system PATH or standard folders, `build.bat` automatically downloads a lightweight, portable toolchain (`w64devkit`, `cmake`, `ninja`) into the local `.tools/` directory.
+   - **Zero admin rights required**, **no UAC prompts**, **no manual installer clicks**.
+2. **Multi-Compiler Support**:
+   The engine automatically builds with:
+   - GCC / MinGW (w64devkit)
+   - LLVM / Clang
+   - Microsoft Visual C++ (MSVC / `cl.exe`)
+3. **Never hardcode absolute paths**:
+   Never write absolute machine-specific paths (e.g., `E:\Programm\...` or `C:\Users\...`) in scripts or CMake files. Always use dynamic PATH discovery, `%~dp0`, or project-relative paths.
+4. **Developer Global Toolchain Setup (Optional)**:
+   If a human developer prefers having the tools available globally in their Windows terminal, run this one command:
+   ```cmd
+   winget install --id Kitware.CMake Ninja-build.Ninja LLVM.LLVM -e --accept-source-agreements --accept-package-agreements
+   ```
 
 ---
 
@@ -31,14 +52,27 @@ It contains complete copy-paste templates, API cheatsheets, and recipes for buil
 ```cmd
 .\build.bat
 ```
+- **Auto-bootstrap**: Downloads missing build tools to `.tools/` on a fresh PC.
 - **Self-healing cache**: If the repository folder was copied or renamed, `build.bat` automatically purges stale `CMakeCache.txt` paths.
-- **Windows Defender resilient**: Includes automatic retry handling with exponential backoff if antivirus scans briefly lock `gcc` or `as.exe`.
+- **Windows Defender resilient**: Includes automatic retry handling with exponential backoff if antivirus scans briefly lock binaries.
 
 ### Alternative: Standard CMake Preset
 ```bash
 cmake --preset default
 cmake --build --preset default
 ```
+
+## Engine Architecture: Editor & Standalone Game (Godot Style)
+
+REngine adopts the **Godot-style separate window architecture**:
+1. **Editor Window (`--editor`, Default)**:
+   - Full Dear ImGui editor UI (Hierarchy, Inspector, Gizmos, Stats, Play/Stop controls).
+   - Pressing **▶ Play** (or F5) saves `scene.json` and spawns the Game in an **independent, dedicated window/process**.
+   - Pressing **⏹ Stop** terminates the game window and returns focus to the Editor.
+2. **Game Window (`--game`)**:
+   - Zero editor overhead (ImGui UI disabled).
+   - Clean standalone viewport rendered directly from the Primary Game Camera.
+   - High performance, pure game loop.
 
 ---
 
@@ -49,22 +83,23 @@ AI agents do NOT have human hands to close interactive game windows. Running `Ra
 ### Safe Autonomous Test Run
 Always verify your code changes by running the engine with `--test-frames`:
 ```bash
-.\build\RaylibEngineApp.exe --test-frames 60
-```
-- **What it does**: Initializes the graphics context, loads the scene and game layers, runs the main loop for exactly 60 frames, prints structured telemetry to stdout, and exits with code `0`.
-- **Headless mode** (hidden window for background runners / CI):
-```bash
 .\build\RaylibEngineApp.exe --test-frames 60 --headless
+```
+- **What it does**: Initializes the graphics context, loads the scene, runs the main loop for exactly 60 frames, prints structured telemetry to stdout, and exits with code `0`.
+- **Game mode test**:
+```bash
+.\build\RaylibEngineApp.exe --game --test-frames 60 --headless
 ```
 
 ### Console Telemetry Format
 The engine prints high-level milestones to stdout:
 ```text
-[REngine] [Init] Window initialized: 1280x720 @ 60 FPS target
+[REngine] [Init] Window initialized: 1280x720 @ 60 FPS target (Title: 'REngine Editor')
 [REngine] [Audio] SoundFX procedural audio initialized successfully.
+[REngine] [Init] EditorLayer (Dear ImGui) initialized successfully
 [REngine] [Scene] Successfully loaded 'scene.json' with 3 active entities
-[REngine] [Layer] Attached layer: 'TetrisDemoLayer'
-[REngine] [Test] Frame 60/60 | FPS: 60 | FrameTime: 16.6 ms | Status: OK
+[REngine] [Test] Automated test-run mode enabled: engine will exit after 60 frames
+[REngine] [Run] Entering main loop (Mode: EDITOR)...
 [REngine] [Test] Completed 60 frames. Exiting test run successfully!
 [REngine] [Shutdown] Engine shut down cleanly with exit code 0
 ```
@@ -72,6 +107,19 @@ The engine prints high-level milestones to stdout:
 ---
 
 ## How AI Agents Build Games in 1 Minute
+
+### 0. Clear Demo Shapes Before Building Games (CRITICAL)
+By default, the starter scene contains demo shapes (Cube, Sphere, Pillar).
+**Always clear demo entities** so your game geometry is not obstructed!
+In `src/main.cpp`:
+```cpp
+app.ClearScene(); // Clears demo entities, preserves primary camera
+app.PushLayer<YourGameLayer>();
+```
+Or start engine with `--clean-scene`:
+```bash
+.\build\RaylibEngineApp.exe --clean-scene --game
+```
 
 ### 1. Game Layer Architecture (`src/core/Layer.hpp`)
 **Never edit engine core files (`Application.cpp`)!**

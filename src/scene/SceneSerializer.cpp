@@ -15,6 +15,7 @@ static std::string GeometryTypeToString(MeshGeometryType type) {
         case MeshGeometryType::Sphere: return "Sphere";
         case MeshGeometryType::Cylinder: return "Cylinder";
         case MeshGeometryType::Plane: return "Plane";
+        case MeshGeometryType::Capsule: return "Capsule";
     }
     return "Cube";
 }
@@ -23,6 +24,7 @@ static MeshGeometryType StringToGeometryType(const std::string& str) {
     if (str == "Sphere") return MeshGeometryType::Sphere;
     if (str == "Cylinder") return MeshGeometryType::Cylinder;
     if (str == "Plane") return MeshGeometryType::Plane;
+    if (str == "Capsule") return MeshGeometryType::Capsule;
     return MeshGeometryType::Cube;
 }
 
@@ -67,6 +69,10 @@ static json BuildSceneJson(Scene& scene) {
                 { "target", { c.camera.target.x, c.camera.target.y, c.camera.target.z } },
                 { "fovy", c.camera.fovy }
             };
+            if (registry.all_of<TransformComponent>(entity)) {
+                auto& t = registry.get<TransformComponent>(entity);
+                t.position = c.camera.position;
+            }
         }
 
         rootJson["entities"].push_back(entityJson);
@@ -132,6 +138,11 @@ static bool LoadSceneFromJson(Scene& scene, const json& rootJson) {
             }
             cam.camera.fovy = cj.value("fovy", 45.0f);
             scene.GetRegistry().emplace<CameraComponent>(entity, cam);
+
+            // Sync transform position to match camera position
+            if (scene.GetRegistry().all_of<TransformComponent>(entity)) {
+                scene.GetRegistry().get<TransformComponent>(entity).position = cam.camera.position;
+            }
         }
     }
 

@@ -8,17 +8,12 @@
   "configurePresets": [
     {
       "name": "default",
-      "displayName": "MinGW Release (Ninja)",
-      "description": "Standard release build preset using MinGW GCC and Ninja",
+      "displayName": "Release (Ninja)",
+      "description": "Standard release build preset using Ninja",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "E:/Programm/w64devkit/bin/gcc.exe",
-        "CMAKE_CXX_COMPILER": "E:/Programm/w64devkit/bin/g++.exe"
-      },
-      "environment": {
-        "PATH": "E:/Programm/w64devkit/bin;E:/Programm/Python/Scripts;E:/Programm/Git/cmd;$penv{PATH}"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     }
   ],
