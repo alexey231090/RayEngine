@@ -1,0 +1,113 @@
+{
+  "entities": [
+    {
+      "mesh": {
+        "color": [
+          0,
+          158,
+          47,
+          255
+        ],
+        "drawWires": true,
+        "type": "Cylinder",
+        "wireColor": [
+          0,
+          117,
+          44,
+          255
+        ]
+      },
+      "name": "Green Pillar",
+      "transform": {
+        "position": [
+          -4.0,
+          1.5,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.5,
+          3.0,
+          1.5
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          0,
+          121,
+          241,
+          255
+        ],
+        "drawWires": true,
+        "type": "Sphere",
+        "wireColor": [
+          0,
+          82,
+          172,
+          255
+        ]
+      },
+      "name": "Blue Sphere",
+      "transform": {
+        "position": [
+          4.0,
+          1.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          2.0,
+          2.0,
+          2.0
+        ]
+      }
+    },
+    {
+      "mesh": {
+        "color": [
+          230,
+          41,
+          55,
+          255
+        ],
+        "drawWires": true,
+        "type": "Cube",
+        "wireColor": [
+          190,
+          33,
+          55,
+          255
+        ]
+      },
+      "name": "Main Red Cube",
+      "transform": {
+        "position": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          2.0,
+          2.0,
+          2.0
+        ]
+      }
+    }
+  ],
+  "scene": "REngineScene"
+}
