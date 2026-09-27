@@ -123,71 +123,58 @@ Or start engine with `--clean-scene`:
 
 ### 1. Game Layer Architecture (`src/core/Layer.hpp`)
 **Never edit engine core files (`Application.cpp`)!**
-Instead, create a self-contained game layer in `src/game/YourGameLayer.hpp`:
+Create your game in `src/game/YourGameLayer.hpp`.
+
+**Editor vs Game Separation (Godot Architecture)**:
+- In **Editor mode** (`--editor`, default): the game does NOT run! The editor is strictly for editing and placing level geometry.
+- In **Game mode** (`--game`): the standalone window runs your game layers (`OnUpdate`, `OnRender3D`, `OnRenderUI`). The editor floor grid is **automatically cleaned and hidden** so your game world has full control over its visuals.
+
+### 2. Auto-Registration via GameRegistry (Zero main.cpp edits!)
+Use `REGISTER_GAME_LAYER` in your header to automatically register your game layer:
 ```cpp
-#pragma once
-#include "core/Layer.hpp"
-#include "audio/SoundFX.hpp"
-#include "renderer/ParticleSystem3D.hpp"
-#include "ui/EngineFont.hpp"
-#include "raylib.h"
-#include "imgui.h"
+#include "game/GameRegistry.hpp"
 
-class MyGameLayer : public Layer {
-public:
-    void OnAttach() override {
-        // Direct context access right from Layer (no manual wiring needed):
-        Camera3D cam = GetPrimaryCamera();
-        cam.position = (Vector3){ 0.0f, 12.0f, 15.0f };
-        cam.target = (Vector3){ 0.0f, 0.0f, 0.0f };
-        SetPrimaryCamera(cam);
-    }
+class PongGameLayer : public REngine::Layer { ... };
 
-    void OnUpdate(float dt) override {
-        if (IsKeyPressed(KEY_SPACE)) {
-            SoundFX::PlayCoin();
-            ParticleSystem3D::Instance().EmitBurst({0, 2, 0}, 20, GOLD);
-        }
-    }
-
-    void OnRender3D() override {
-        // Automatically lit with 3D directional sunlight and ambient illumination!
-        DrawCube({0, 0, 0}, 2, 2, 2, RED);
-    }
-
-    void OnRenderUI() override {
-        // 1. Raylib 2D UI with native Cyrillic (UTF-8) support:
-        DrawTextUTF8("Очки: 100", 20, 20, 24, WHITE);
-
-        // 2. Dear ImGui HUD (safely works in BOTH Editor and Standalone Game modes!):
-        ImGui::Begin("Игровая Панель");
-        ImGui::Text("Нажмите ПРОБЕЛ для эффектов!");
-        ImGui::End();
-    }
-};
+REGISTER_GAME_LAYER(PongGameLayer, "Pong");
 ```
-Then plug it into `src/main.cpp`:
+When running `--game`, REngine automatically instantiates and attaches your registered game layer. You can also specify `--layer <Name>`.
+
+### 3. Built-in 3D Arcade Physics & Collision Resolver (`Physics3D.hpp`)
+Never write penetration or reflection math manually:
 ```cpp
-app.ClearScene();
-app.PushLayer<MyGameLayer>();
+#include "math/Physics3D.hpp"
+
+// Automatically pushes sphere out of box penetration and reflects velocity:
+bool hit = REngine::Physics3D::ResolveSphereAABB(ballPos, ballVel, ballRadius, boxMin, boxMax, 1.0f);
+bool hitBox = REngine::Physics3D::ResolveSphereBox(ballPos, ballVel, ballRadius, boxCenter, boxSize, 1.0f);
+bool hitSphere = REngine::Physics3D::ResolveSphereSphere(posA, velA, radA, posB, velB, radB);
+bool hitPlane = REngine::Physics3D::ResolveSpherePlane(ballPos, ballVel, ballRadius, planePoint, planeNormal);
 ```
 
-### 2. Context Accessors in Layer (`GetScene()`, `GetPrimaryCamera()`)
-Layers have built-in direct access to engine subsystems:
-- `GetScene()`: Returns `Scene&` for ECS entity creation/deletion.
-- `GetPrimaryCamera()`: Returns current active `Camera3D`.
-- `SetPrimaryCamera(cam)`: Configures the game camera position/target.
-- `GetApp()`: Returns `Application&`.
+### 4. Automated Visual Testing & Screenshots (`--screenshot`)
+AI agents can visually inspect the viewport after test runs:
+```bash
+.\build\RaylibEngineApp.exe --game --test-frames 30 --screenshot test_result.png --headless
+```
+Inspect the resulting image directly to verify lighting, geometry, and layout.
 
-### 3. Cyrillic (UTF-8) Text Support
-The engine includes automatic Windows font loading (`segoeui.ttf` / `arial.ttf`) with full Cyrillic (0x0400–0x04FF) glyph ranges:
-- **Raylib 2D**: `DrawTextUTF8("Привет!", x, y, fontSize, color)`
-- **Dear ImGui**: `ImGui::Text("Привет, мир!")` works out of the box without `???`.
+### 5. Automated Input Simulation (`--simulate-input` and `VirtualInput.hpp`)
+For headless CI or agent validation without human hands:
+```bash
+.\build\RaylibEngineApp.exe --game --test-frames 60 --simulate-input --headless
+```
+Automatically triggers `KEY_SPACE` at frame 5 to test game starts/serves.
 
-### 4. Realistic 3D Directional Lighting
-3D primitives (`Cube`, `Sphere`, `Cylinder`, `Capsule`, `Plane`) are automatically rendered with a built-in directional sunlight and ambient shading shader, giving rich 3D depth and highlights.
+### 6. Instant Clean Arcade HUD Helpers
+Layers have built-in HUD methods with native Cyrillic (UTF-8) support:
+```cpp
+// In OnRenderUI():
+DrawHUDScoreboard("Игрок", p1Score, "Компьютер", p2Score, WHITE);
+DrawCenterPrompt("Нажмите ПРОБЕЛ для подачи", 26, YELLOW);
+```
 
-### 5. Procedural Audio (`SoundFX`)
+### 7. Procedural Audio (`SoundFX`)
 Play sounds directly from C++ without generating `.wav` files:
 - `SoundFX::PlayClick()` (UI / Move)
 - `SoundFX::PlayCoin()` (Score / Pickup)
@@ -196,13 +183,13 @@ Play sounds directly from C++ without generating `.wav` files:
 - `SoundFX::PlayLineClear()` (Level up / Combo)
 - `SoundFX::PlayTone(freq, duration)` (Procedural tone synth)
 
-### 6. 3D Particles (`ParticleSystem3D`)
+### 8. 3D Particles (`ParticleSystem3D`)
 Add immediate juice and explosions:
 ```cpp
 ParticleSystem3D::Instance().EmitBurst({x, y, z}, 25, ORANGE, 5.0f, 0.3f);
 ```
 
-### 7. Declarative World Editing (`scene.json`)
+### 9. Declarative World Editing (`scene.json`)
 To add static meshes or level geometry, edit `scene.json` directly. The engine serializes and deserializes entities, transforms, geometry, colors, and camera settings automatically.
 
 ---
@@ -210,8 +197,9 @@ To add static meshes or level geometry, edit `scene.json` directly. The engine s
 ## Critical Rules for AI Agents
 
 1. **Always verify with `--test-frames 60`**:
-   Before claiming a task is complete, run `build.bat` followed by `.\build\RaylibEngineApp.exe --test-frames 60` to guarantee 0 compiler errors and 0 runtime crashes.
+   Before claiming a task is complete, run `build.bat` followed by `.\build\RaylibEngineApp.exe --game --test-frames 60 --headless` to guarantee 0 compiler errors and 0 runtime crashes.
 2. **Never leave orphan processes running**:
    Always use `--test-frames` to avoid `CreateProcess: Access is denied` file lock errors on subsequent builds.
 3. **No hardcoded machine-specific absolute paths**:
    All paths in CMake and C++ must remain relative to project root.
+

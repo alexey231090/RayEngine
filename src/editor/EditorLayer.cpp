@@ -5,6 +5,7 @@
 #include "scene/SceneSerializer.hpp"
 #include "scene/Components.hpp"
 #include "core/ProcessRunner.hpp"
+#include "core/Application.hpp"
 #include <iostream>
 
 namespace REngine {
@@ -242,6 +243,12 @@ void EditorLayer::DrawToolbarPanel() {
             m_scene.Clear(true);
             m_selectedEntity = entt::null;
             m_statusMessage = "Scene cleared (Camera preserved)";
+        }
+
+        ImGui::SameLine();
+        bool showGrid = Application::Get().GetRenderSystem().IsShowGrid();
+        if (ImGui::Checkbox("Floor Grid", &showGrid)) {
+            Application::Get().GetRenderSystem().SetShowGrid(showGrid);
         }
 
         // Status text and current mode

@@ -20,6 +20,8 @@ struct AppConfig {
     bool headless = false; // Run with hidden window for automated testing
     std::string scenePath = "scene.json"; // Scene file to load
     bool isGameMode = false; // Run standalone game window without Editor UI (Godot style)
+    std::string screenshotPath = ""; // Path to capture automated test screenshot (e.g. test_result.png)
+    bool simulateInput = false; // Automatically simulate key inputs during test runs
 };
 
 class Application {
@@ -33,6 +35,8 @@ public:
 
     Scene& GetScene() { return m_scene; }
     void ClearScene(bool keepPrimaryCamera = true);
+
+    RenderSystem& GetRenderSystem() { return m_renderSystem; }
 
     Camera3D GetPrimaryCamera();
     void SetPrimaryCamera(const Camera3D& camera);

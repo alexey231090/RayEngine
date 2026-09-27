@@ -43,3 +43,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Test artifacts
+test_*.png
+*.screenshot.png

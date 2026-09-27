@@ -19,6 +19,10 @@ public:
     bool IsLightingEnabled() const { return m_lightingEnabled; }
     void SetLightDirection(Vector3 dir);
 
+    void SetShowGrid(bool show) { m_showGrid = show; }
+    bool IsShowGrid() const { return m_showGrid; }
+    void SetGridParams(int slices, float spacing) { m_gridSlices = slices; m_gridSpacing = spacing; }
+
 private:
     void DrawCameraGizmo(const Camera3D& gameCamera, bool isSelected = false);
 
@@ -31,6 +35,10 @@ private:
     int m_lightColorLoc = -1;
     int m_ambientColorLoc = -1;
     int m_viewPosLoc = -1;
+
+    bool m_showGrid = true;
+    int m_gridSlices = 20;
+    float m_gridSpacing = 1.0f;
 };
 
 } // namespace REngine

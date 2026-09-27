@@ -107,8 +107,10 @@ void RenderSystem::Render(Scene& scene, const Camera3D& camera, bool isEditMode,
 
     BeginMode3D(camera);
 
-    // Draw reference floor grid
-    DrawGrid(20, 1.0f);
+    // Draw reference floor grid ONLY in editor mode and when enabled
+    if (isEditMode && m_showGrid) {
+        DrawGrid(m_gridSlices, m_gridSpacing);
+    }
 
     // Render all ECS entities that have TransformComponent and MeshComponent
     auto& registry = scene.GetRegistry();

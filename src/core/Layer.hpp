@@ -27,6 +27,10 @@ public:
     Camera3D GetPrimaryCamera();
     void SetPrimaryCamera(const Camera3D& camera);
 
+    // Instant HUD helpers for clean arcade typography
+    void DrawHUDScoreboard(const char* p1Name, int p1Score, const char* p2Name, int p2Score, Color color = WHITE);
+    void DrawCenterPrompt(const char* message, int fontSize = 28, Color color = YELLOW);
+
 protected:
     std::string m_debugName;
 };

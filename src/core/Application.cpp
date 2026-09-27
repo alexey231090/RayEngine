@@ -7,6 +7,7 @@
 #include "imgui.h"
 #include "rlImGui.h"
 #include "rcamera.h"
+#include "core/VirtualInput.hpp"
 #include <iostream>
 #include <algorithm>
 
@@ -249,22 +250,37 @@ void Application::Run() {
         frameCounter++;
         float dt = GetFrameTime();
 
-        // Update particle system
-        ParticleSystem3D::Get().OnUpdate(dt);
-
-        // Update all attached game layers
-        for (auto& layer : m_layers) {
-            layer->OnUpdate(dt);
+        // Automated test input simulation
+        if (m_config.simulateInput) {
+            // Simulate action press at frame 5 (e.g., Space to start/serve)
+            if (frameCounter == 5) {
+                VirtualInput::Get().SetKeyPressed(KEY_SPACE, true);
+                VirtualInput::Get().SetKeyDown(KEY_SPACE, true);
+            } else if (frameCounter == 15) {
+                VirtualInput::Get().SetKeyDown(KEY_SPACE, false);
+                VirtualInput::Get().SetKeyDown(KEY_W, true);
+            } else if (frameCounter == 25) {
+                VirtualInput::Get().SetKeyDown(KEY_W, false);
+                VirtualInput::Get().SetKeyDown(KEY_S, true);
+            }
         }
 
         if (m_config.isGameMode) {
             // ================= STANDALONE GAME MODE =================
+            // In Game Mode, simulation and game layers run autonomously.
+            // Floor grid and editor tools are completely disabled.
+            ParticleSystem3D::Get().OnUpdate(dt);
+
+            for (auto& layer : m_layers) {
+                layer->OnUpdate(dt);
+            }
+
             Camera3D gameCamera = GetCurrentGameCamera();
 
             BeginDrawing();
                 ClearBackground((Color){ 25, 25, 30, 255 });
 
-                // 1. Render 3D Scene using Game Camera
+                // 1. Render 3D Scene using Game Camera (grid disabled in game mode)
                 m_renderSystem.Render(m_scene, gameCamera, false);
 
                 // 2. Render 3D Particles and Game Layers
@@ -286,6 +302,8 @@ void Application::Run() {
             EndDrawing();
         } else {
             // ================= EDITOR MODE =================
+            // In Editor Mode, the game does NOT run!
+            // The editor is strictly for inspecting and manipulating the level/scene.
             HandleCameraInput();
             Camera3D activeCamera = m_editorCamera;
 
@@ -297,36 +315,45 @@ void Application::Run() {
             BeginDrawing();
                 ClearBackground((Color){ 25, 25, 30, 255 });
 
-                // 1. Render 3D Scene in Edit mode
+                // 1. Render 3D Scene in Edit mode (includes editor floor grid & selection outlines)
                 entt::entity selectedEntity = m_editorLayer ? m_editorLayer->GetSelectedEntity() : entt::null;
                 m_renderSystem.Render(m_scene, activeCamera, true, selectedEntity);
 
-                // 2. Render 3D Particles, Game Layers, Gizmo
+                // 2. Render Gizmos in Editor Viewport
                 BeginMode3D(activeCamera);
-                    ParticleSystem3D::Get().OnRender3D();
-
-                    for (auto& layer : m_layers) {
-                        layer->OnRender3D();
-                    }
-
                     if (m_editorLayer) {
                         m_editorLayer->RenderGizmo(activeCamera);
                     }
                 EndMode3D();
 
-                // 3. Render Dear ImGui Editor UI
+                // 3. Render Dear ImGui Editor UI (Hierarchy, Inspector, Stats, Play Button)
                 if (m_editorLayer) {
                     m_editorLayer->BeginFrame();
                     m_editorLayer->RenderUI();
-
-                    for (auto& layer : m_layers) {
-                        layer->OnRenderUI();
-                    }
                     m_editorLayer->EndFrame();
                 }
 
             EndDrawing();
         }
+
+        // Automated screenshot capture (for visual inspection by AI agents)
+        if (!m_config.screenshotPath.empty()) {
+            bool shouldCapture = false;
+            if (m_config.testFrames > 0 && frameCounter == m_config.testFrames) {
+                shouldCapture = true;
+            } else if (m_config.testFrames == 0 && frameCounter == 30) {
+                shouldCapture = true;
+            }
+
+            if (shouldCapture) {
+                TakeScreenshot(m_config.screenshotPath.c_str());
+                std::cout << "[REngine] [Screenshot] Saved frame " << frameCounter 
+                          << " capture to: " << m_config.screenshotPath << std::endl;
+            }
+        }
+
+        // End of frame input cleanup
+        VirtualInput::Get().EndFrame();
 
         // Automated test frame handling
         if (m_config.testFrames > 0) {

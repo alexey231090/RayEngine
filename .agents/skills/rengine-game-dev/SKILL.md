@@ -14,17 +14,19 @@ This skill enables AI coding agents (Antigravity, Claude Code, Cursor, Codex) to
 1. **NEVER modify engine core files**:
    - Do NOT edit `src/core/Application.cpp` or `src/core/Application.hpp`.
    - Do NOT edit `src/editor/*` or `src/scene/*`.
-2. **Build your game in a dedicated Layer**:
-   - Create a single self-contained header/class in `src/game/YourGameLayer.hpp`.
-   - Clear the demo entities and register your layer in `src/main.cpp`:
+2. **Editor vs Game Window Separation**:
+   - The **Editor** is strictly for editing scene geometry. Game logic (`OnUpdate`) and custom 3D game models (`OnRender3D`) DO NOT run inside the Editor.
+   - The **Standalone Game Window** runs the full game loop. The editor floor grid is **automatically cleaned and removed** in Game mode so your custom floor and arena look clean.
+3. **Register your game layer with `REGISTER_GAME_LAYER`**:
+   - You don't even need to modify `main.cpp`! Just use:
      ```cpp
-     app.ClearScene(); // Clears demo cube/sphere/pillar, preserves camera
-     app.PushLayer<YourGameLayer>();
+     REGISTER_GAME_LAYER(MyGameLayer, "MyGame");
      ```
-3. **Always verify with `--test-frames 60`**:
+   - When running `--game`, REngine automatically detects and runs your registered layer.
+4. **Always verify with `--test-frames 60` and `--screenshot`**:
    - Build: `.\build.bat`
-   - Test: `.\build\RaylibEngineApp.exe --game --test-frames 60 --headless`
-   - Never run `RaylibEngineApp.exe` interactively without test flags — it will freeze your terminal.
+   - Test: `.\build\RaylibEngineApp.exe --game --test-frames 60 --screenshot test_result.png --headless`
+   - Inspect `test_result.png` to visually ensure correct viewport, colors, and layout.
 
 ---
 
@@ -35,6 +37,8 @@ Every game in REngine is a subclass of [Layer](src/core/Layer.hpp):
 ```cpp
 #pragma once
 #include "core/Layer.hpp"
+#include "game/GameRegistry.hpp"
+#include "math/Physics3D.hpp"
 #include "audio/SoundFX.hpp"
 #include "renderer/ParticleSystem3D.hpp"
 #include "ui/EngineFont.hpp"
@@ -42,7 +46,7 @@ Every game in REngine is a subclass of [Layer](src/core/Layer.hpp):
 #include "raymath.h"
 #include "imgui.h"
 
-class MyGameLayer : public Layer {
+class MyGameLayer : public REngine::Layer {
 public:
     void OnAttach() override {
         // Direct camera & scene setup from inside Layer:
@@ -57,26 +61,26 @@ public:
     void OnUpdate(float dt) override {
         // 1. Handle Input
         if (IsKeyPressed(KEY_SPACE)) {
-            // Action
             SoundFX::PlayClick();
             ParticleSystem3D::Instance().EmitBurst({0.0f, 1.0f, 0.0f}, 15, GOLD);
         }
 
-        // 2. Update logic, timers, physics
+        // 2. Collision resolution using Physics3D:
+        // REngine::Physics3D::ResolveSphereBox(ballPos, ballVel, ballRadius, boxCenter, boxSize);
     }
 
     void OnRender3D() override {
-        // Render 3D geometry (automatically lit with 3D directional sunlight & ambient shading)
-        DrawGrid(10, 1.0f);
+        // Render game geometry (floor grid is already cleaned away in game mode!)
         DrawCube({0.0f, 0.5f, 0.0f}, 1.0f, 1.0f, 1.0f, RED);
         DrawCubeWires({0.0f, 0.5f, 0.0f}, 1.0f, 1.0f, 1.0f, MAROON);
     }
 
     void OnRenderUI() override {
-        // 1. Raylib 2D text with native Cyrillic (UTF-8) support:
-        DrawTextUTF8("Счет: 100", 20, 20, 24, WHITE);
+        // 1. Built-in clean HUD scoreboard & prompt:
+        DrawHUDScoreboard("Игрок 1", m_Score, "Игрок 2", 0, WHITE);
+        DrawCenterPrompt("Нажмите ПРОБЕЛ для игры", 24, YELLOW);
 
-        // 2. Dear ImGui HUD (safely works in BOTH Editor and Standalone --game modes!):
+        // 2. Optional Dear ImGui HUD:
         ImGui::Begin("Game HUD", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Text("Счет: %d", m_Score);
         if (ImGui::Button("Перезапуск")) {
@@ -96,6 +100,9 @@ private:
 
     int m_Score = 0;
 };
+
+// Auto-register without editing main.cpp!
+REGISTER_GAME_LAYER(MyGameLayer, "MyGame");
 ```
 
 ---
